@@ -1,0 +1,5 @@
+scan_now:
+  name: Scanner maintenant
+  description: >-
+    Lance un scan immediat de la mediatheque pour detecter les films
+    et episodes manquants.

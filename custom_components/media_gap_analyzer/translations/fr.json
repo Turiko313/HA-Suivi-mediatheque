@@ -1,0 +1,34 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Media Gap Analyzer",
+        "description": "Configurez votre cle API TMDb et les chemins de votre mediatheque.\nLes chemins peuvent etre separes par des virgules pour plusieurs repertoires.\nObtenez une cle API TMDb gratuite sur https://www.themoviedb.org/settings/api",
+        "data": {
+          "tmdb_api_key": "Cle API TMDb",
+          "language": "Langue",
+          "scan_interval": "Intervalle de scan (heures)",
+          "movies_paths": "Chemins des films (separes par des virgules)",
+          "series_paths": "Chemins des series (separes par des virgules)",
+          "anime_paths": "Chemins des animes (separes par des virgules)"
+        }
+      }
+    },
+    "error": {
+      "invalid_api_key": "Cle API TMDb invalide. Veuillez verifier et reessayer."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options Media Gap Analyzer",
+        "data": {
+          "scan_interval": "Intervalle de scan (heures)",
+          "movies_paths": "Chemins des films (separes par des virgules)",
+          "series_paths": "Chemins des series (separes par des virgules)",
+          "anime_paths": "Chemins des animes (separes par des virgules)"
+        }
+      }
+    }
+  }
+}
