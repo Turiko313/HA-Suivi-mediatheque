@@ -2,31 +2,31 @@
   "config": {
     "step": {
       "user": {
-        "title": "Media Gap Analyzer",
-        "description": "Configurez votre cle API TMDb et les chemins de votre mediatheque.\nLes chemins peuvent etre separes par des virgules pour plusieurs repertoires.\nObtenez une cle API TMDb gratuite sur https://www.themoviedb.org/settings/api",
+        "title": "Suivi Médiathèque",
+        "description": "Configurez votre clé API TMDb et les chemins de votre médiathèque.\nLes chemins peuvent être séparés par des virgules pour plusieurs répertoires.\nObtenez une clé API TMDb gratuite sur https://www.themoviedb.org/settings/api",
         "data": {
-          "tmdb_api_key": "Cle API TMDb",
+          "tmdb_api_key": "Clé API TMDb",
           "language": "Langue",
           "scan_interval": "Intervalle de scan (heures)",
-          "movies_paths": "Chemins des films (separes par des virgules)",
-          "series_paths": "Chemins des series (separes par des virgules)",
-          "anime_paths": "Chemins des animes (separes par des virgules)"
+          "movies_paths": "Chemins des films (séparés par des virgules)",
+          "series_paths": "Chemins des séries (séparés par des virgules)",
+          "anime_paths": "Chemins des animés (séparés par des virgules)"
         }
       }
     },
     "error": {
-      "invalid_api_key": "Cle API TMDb invalide. Veuillez verifier et reessayer."
+      "invalid_api_key": "Clé API TMDb invalide. Veuillez vérifier et réessayer."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Options Media Gap Analyzer",
+        "title": "Suivi Médiathèque - Options",
         "data": {
           "scan_interval": "Intervalle de scan (heures)",
-          "movies_paths": "Chemins des films (separes par des virgules)",
-          "series_paths": "Chemins des series (separes par des virgules)",
-          "anime_paths": "Chemins des animes (separes par des virgules)"
+          "movies_paths": "Chemins des films (séparés par des virgules)",
+          "series_paths": "Chemins des séries (séparés par des virgules)",
+          "anime_paths": "Chemins des animés (séparés par des virgules)"
         }
       }
     }

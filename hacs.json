@@ -1,6 +1,6 @@
 {
-  "name": "Media Gap Analyzer",
-  "homeassistant": "2024.1.0",
+  "content_in_root": false,
   "render_readme": true,
-  "content_in_root": false
+  "name": "Suivi Médiathèque",
+  "homeassistant": "2024.1.0"
 }

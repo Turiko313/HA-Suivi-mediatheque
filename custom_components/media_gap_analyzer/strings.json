@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Media Gap Analyzer",
+        "title": "Suivi Médiathèque",
         "description": "Configure your TMDb API key and media library paths.\nPaths can be comma-separated for multiple directories.\nGet a free TMDb API key at https://www.themoviedb.org/settings/api",
         "data": {
           "tmdb_api_key": "TMDb API Key",
@@ -21,7 +21,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Media Gap Analyzer Options",
+        "title": "Suivi Médiathèque - Options",
         "data": {
           "scan_interval": "Scan interval (hours)",
           "movies_paths": "Movies paths (comma-separated)",
