@@ -2,7 +2,5 @@
   "name": "Media Gap Analyzer",
   "homeassistant": "2024.1.0",
   "render_readme": true,
-  "zip_release": true,
-  "filename": "media_gap_analyzer.zip",
   "content_in_root": false
 }
