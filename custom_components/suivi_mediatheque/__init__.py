@@ -1,4 +1,4 @@
-"""Media Gap Analyzer - Detecte les films/episodes manquants dans votre mediatheque."""
+"""Suivi Médiathèque - Detecte les films/episodes manquants dans votre mediatheque."""
 from __future__ import annotations
 
 import logging
@@ -13,7 +13,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Media Gap Analyzer from a config entry."""
+    """Set up Suivi Médiathèque from a config entry."""
     hass.data.setdefault(DOMAIN, {})
 
     coordinator = MediaGapCoordinator(hass, entry)

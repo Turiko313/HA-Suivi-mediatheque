@@ -1,4 +1,4 @@
-"""TMDb API client for Media Gap Analyzer."""
+"""TMDb API client for Suivi Médiathèque."""
 from __future__ import annotations
 
 import asyncio

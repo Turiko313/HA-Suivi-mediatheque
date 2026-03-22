@@ -1,5 +1,5 @@
 {
-  "domain": "media_gap_analyzer",
+  "domain": "suivi_mediatheque",
   "name": "Suivi Médiathèque",
   "codeowners": [
     "@Turiko313"
@@ -9,6 +9,8 @@
   "documentation": "https://github.com/Turiko313/HA-Suivi-mediatheque",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/Turiko313/HA-Suivi-mediatheque/issues",
-  "requirements": [],
-  "version": "1.0.0"
+  "requirements": [
+    "smbprotocol>=1.13.0"
+  ],
+  "version": "1.1.0"
 }

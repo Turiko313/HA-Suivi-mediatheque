@@ -1,0 +1,56 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Suivi Médiathèque",
+        "description": "Configurez votre clé API TMDb, la connexion NAS (optionnel) et les chemins de votre médiathèque.\nLes chemins peuvent être séparés par des virgules.\nSi un NAS est configuré, entrez le nom du partage (ex : 'Films'). Sinon, entrez le chemin local complet (ex : '/media/films').",
+        "data": {
+          "tmdb_api_key": "Clé API TMDb",
+          "language": "Langue",
+          "scan_interval": "Intervalle de scan (heures)",
+          "nas_server": "Adresse du NAS (optionnel)",
+          "nas_username": "Utilisateur NAS (optionnel)",
+          "nas_password": "Mot de passe NAS (optionnel)",
+          "movies_paths": "Chemins des films (séparés par des virgules)",
+          "series_paths": "Chemins des séries (séparés par des virgules)",
+          "anime_paths": "Chemins des animés (séparés par des virgules)"
+        },
+        "data_description": {
+          "nas_server": "IP ou nom d'hôte de votre NAS, ex : 192.168.1.100. Laissez vide pour des chemins locaux.",
+          "nas_username": "Identifiant SMB/CIFS de votre partage NAS.",
+          "nas_password": "Mot de passe SMB/CIFS de votre partage NAS.",
+          "movies_paths": "Nom du partage NAS (ex : 'Films') ou chemin local (ex : '/media/films').",
+          "series_paths": "Nom du partage NAS (ex : 'Series') ou chemin local (ex : '/media/series').",
+          "anime_paths": "Nom du partage NAS (ex : 'Anime') ou chemin local (ex : '/media/anime')."
+        }
+      }
+    },
+    "error": {
+      "invalid_api_key": "Clé API TMDb invalide. Veuillez vérifier et réessayer."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Suivi Médiathèque - Options",
+        "data": {
+          "scan_interval": "Intervalle de scan (heures)",
+          "nas_server": "Adresse du NAS (optionnel)",
+          "nas_username": "Utilisateur NAS (optionnel)",
+          "nas_password": "Mot de passe NAS (optionnel)",
+          "movies_paths": "Chemins des films (séparés par des virgules)",
+          "series_paths": "Chemins des séries (séparés par des virgules)",
+          "anime_paths": "Chemins des animés (séparés par des virgules)"
+        },
+        "data_description": {
+          "nas_server": "IP ou nom d'hôte de votre NAS. Laissez vide pour des chemins locaux.",
+          "nas_username": "Identifiant SMB/CIFS de votre partage NAS.",
+          "nas_password": "Mot de passe SMB/CIFS de votre partage NAS.",
+          "movies_paths": "Nom du partage NAS (ex : 'Films') ou chemin local (ex : '/media/films').",
+          "series_paths": "Nom du partage NAS (ex : 'Series') ou chemin local (ex : '/media/series').",
+          "anime_paths": "Nom du partage NAS (ex : 'Anime') ou chemin local (ex : '/media/anime')."
+        }
+      }
+    }
+  }
+}

@@ -1,17 +1,123 @@
-"""File-system scanner for Media Gap Analyzer.
+"""File-system scanner for Suivi Médiathèque.
 
-Walks directories, parses filenames and returns structured media data.
+Walks directories (local or SMB/CIFS), parses filenames and returns
+structured media data.
 """
 from __future__ import annotations
 
 import logging
 import os
 import re
+import stat as stat_mod
 from dataclasses import dataclass, field
 
 from .const import SUPPORTED_EXTENSIONS
 
 _LOGGER = logging.getLogger(__name__)
+
+try:
+    import smbclient as _smb
+
+    _HAS_SMB = True
+except ImportError:
+    _smb = None  # type: ignore[assignment]
+    _HAS_SMB = False
+
+
+# ---------------------------------------------------------------------------
+# File-system abstraction (local + SMB)
+# ---------------------------------------------------------------------------
+
+
+class _FileOps:
+    """Unified file operations for local paths and SMB/CIFS shares."""
+
+    def __init__(self, nas_config: dict | None = None) -> None:
+        self._nas = nas_config or {}
+        self._smb_registered = False
+
+    # -- internal ------------------------------------------------------------
+
+    def _ensure_smb(self) -> None:
+        if self._smb_registered:
+            return
+        if not _HAS_SMB:
+            raise RuntimeError(
+                "Le package smbprotocol est requis pour accéder à un NAS. "
+                "Il devrait être installé automatiquement par Home Assistant."
+            )
+        server = self._nas.get("server", "")
+        if not server:
+            return
+        _smb.register_session(
+            server,
+            username=self._nas.get("username", ""),
+            password=self._nas.get("password", ""),
+        )
+        self._smb_registered = True
+
+    # -- path helpers --------------------------------------------------------
+
+    def resolve_path(self, raw_path: str) -> str:
+        """Convert user-entered path to a usable path.
+
+        - Absolute local path (/media/films) -> used as-is
+        - UNC path (//server/share) -> used as-is (SMB)
+        - Relative path (Films) + NAS configured -> //server/Films
+        """
+        raw_path = raw_path.strip()
+        if raw_path.startswith("/") and not raw_path.startswith("//"):
+            return raw_path  # local absolute path
+        if raw_path.startswith("//") or raw_path.startswith("\\\\"):
+            self._ensure_smb()
+            return raw_path.replace("\\", "/")
+        server = self._nas.get("server")
+        if server:
+            self._ensure_smb()
+            return f"//{server}/{raw_path}"
+        return raw_path  # no NAS, treat as local
+
+    @staticmethod
+    def is_smb(path: str) -> bool:
+        return path.startswith("//")
+
+    def isdir(self, path: str) -> bool:
+        if self.is_smb(path):
+            try:
+                return stat_mod.S_ISDIR(_smb.stat(path).st_mode)
+            except Exception:
+                return False
+        return os.path.isdir(path)
+
+    def listdir(self, path: str) -> list[str]:
+        if self.is_smb(path):
+            return _smb.listdir(path)
+        return os.listdir(path)
+
+    def walk(self, path: str):
+        if self.is_smb(path):
+            for dirpath, dirnames, filenames in _smb.walk(path):
+                yield dirpath.replace("\\", "/"), dirnames, filenames
+        else:
+            yield from os.walk(path)
+
+    def join(self, base: str, *parts: str) -> str:
+        if self.is_smb(base):
+            result = base.rstrip("/")
+            for p in parts:
+                result = result + "/" + p.strip("/")
+            return result
+        return os.path.join(base, *parts)
+
+    def relpath(self, path: str, base: str) -> str:
+        if self.is_smb(path):
+            path_n = path.replace("\\", "/")
+            base_n = base.replace("\\", "/").rstrip("/")
+            if path_n.startswith(base_n):
+                rel = path_n[len(base_n) :].lstrip("/")
+                return rel if rel else "."
+            return path_n
+        return os.path.relpath(path, base)
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -87,22 +193,24 @@ def _parse_episode(filename: str, fallback_season: int | None = None) -> tuple[i
 # Public scanner functions (blocking - run via executor)
 # ---------------------------------------------------------------------------
 
-def scan_movies(paths_csv: str) -> list[ScannedMovie]:
+def scan_movies(paths_csv: str, nas_config: dict | None = None) -> list[ScannedMovie]:
+    fs = _FileOps(nas_config)
     movies: list[ScannedMovie] = []
     paths = [p.strip() for p in paths_csv.split(",") if p.strip()]
-    for base in paths:
-        if not os.path.isdir(base):
+    for raw in paths:
+        base = fs.resolve_path(raw)
+        if not fs.isdir(base):
             _LOGGER.warning("Movies path does not exist: %s", base)
             continue
-        for entry in os.listdir(base):
-            full = os.path.join(base, entry)
-            if os.path.isdir(full):
+        for entry in fs.listdir(base):
+            full = fs.join(base, entry)
+            if fs.isdir(full):
                 # folder-per-movie: use folder name
                 title, year = _parse_movie_name(entry)
-                has_video = any(_is_video(f) for f in os.listdir(full) if os.path.isfile(os.path.join(full, f)))
+                has_video = any(_is_video(f) for f in fs.listdir(full))
                 if has_video:
                     movies.append(ScannedMovie(title=title, year=year, file_path=full))
-            elif os.path.isfile(full) and _is_video(entry):
+            elif _is_video(entry):
                 name = os.path.splitext(entry)[0]
                 title, year = _parse_movie_name(name)
                 movies.append(ScannedMovie(title=title, year=year, file_path=full))
@@ -110,16 +218,18 @@ def scan_movies(paths_csv: str) -> list[ScannedMovie]:
     return movies
 
 
-def scan_series(paths_csv: str) -> list[ScannedSeries]:
+def scan_series(paths_csv: str, nas_config: dict | None = None) -> list[ScannedSeries]:
+    fs = _FileOps(nas_config)
     series_map: dict[str, ScannedSeries] = {}
     paths = [p.strip() for p in paths_csv.split(",") if p.strip()]
-    for base in paths:
-        if not os.path.isdir(base):
+    for raw in paths:
+        base = fs.resolve_path(raw)
+        if not fs.isdir(base):
             _LOGGER.warning("Series path does not exist: %s", base)
             continue
-        for show_dir in sorted(os.listdir(base)):
-            show_path = os.path.join(base, show_dir)
-            if not os.path.isdir(show_path):
+        for show_dir in sorted(fs.listdir(base)):
+            show_path = fs.join(base, show_dir)
+            if not fs.isdir(show_path):
                 continue
             title, year = _parse_movie_name(show_dir)
             if title in series_map:
@@ -129,9 +239,9 @@ def scan_series(paths_csv: str) -> list[ScannedSeries]:
                 series_map[title] = series
 
             # Walk the show directory tree
-            for dirpath, _dirnames, filenames in os.walk(show_path):
+            for dirpath, _dirnames, filenames in fs.walk(show_path):
                 # Detect season from parent folder name
-                rel = os.path.relpath(dirpath, show_path)
+                rel = fs.relpath(dirpath, show_path)
                 folder_season: int | None = None
                 sm = _RE_SEASON_DIR.search(rel)
                 if sm:
@@ -147,7 +257,7 @@ def scan_series(paths_csv: str) -> list[ScannedSeries]:
                             ScannedEpisode(
                                 season=season_num,
                                 episode=ep_num,
-                                file_path=os.path.join(dirpath, fname),
+                                file_path=fs.join(dirpath, fname),
                             )
                         )
                     elif folder_season is not None:

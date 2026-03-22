@@ -1,4 +1,4 @@
-"""Config flow for Media Gap Analyzer."""
+"""Config flow for Suivi Médiathèque."""
 from __future__ import annotations
 
 import logging
@@ -15,6 +15,9 @@ from .const import (
     CONF_ANIME_PATHS,
     CONF_LANGUAGE,
     CONF_MOVIES_PATHS,
+    CONF_NAS_PASSWORD,
+    CONF_NAS_SERVER,
+    CONF_NAS_USERNAME,
     CONF_SCAN_INTERVAL,
     CONF_SERIES_PATHS,
     CONF_TMDB_API_KEY,
@@ -62,15 +65,18 @@ class MediaGapConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if not await client.validate_api_key():
                 errors["base"] = "invalid_api_key"
             else:
-                # Store API key + language in data, paths + interval in options
+                # Store API key + language in data, paths + NAS + interval in options
                 return self.async_create_entry(
-                    title="Media Gap Analyzer",
+                    title="Suivi Médiathèque",
                     data={
                         CONF_TMDB_API_KEY: user_input[CONF_TMDB_API_KEY],
                         CONF_LANGUAGE: user_input.get(CONF_LANGUAGE, DEFAULT_LANGUAGE),
                     },
                     options={
                         CONF_SCAN_INTERVAL: user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
+                        CONF_NAS_SERVER: user_input.get(CONF_NAS_SERVER, ""),
+                        CONF_NAS_USERNAME: user_input.get(CONF_NAS_USERNAME, ""),
+                        CONF_NAS_PASSWORD: user_input.get(CONF_NAS_PASSWORD, ""),
                         CONF_MOVIES_PATHS: user_input.get(CONF_MOVIES_PATHS, ""),
                         CONF_SERIES_PATHS: user_input.get(CONF_SERIES_PATHS, ""),
                         CONF_ANIME_PATHS: user_input.get(CONF_ANIME_PATHS, ""),
@@ -84,6 +90,9 @@ class MediaGapConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): vol.All(
                     vol.Coerce(int), vol.Range(min=1, max=720)
                 ),
+                vol.Optional(CONF_NAS_SERVER, default=""): str,
+                vol.Optional(CONF_NAS_USERNAME, default=""): str,
+                vol.Optional(CONF_NAS_PASSWORD, default=""): str,
                 vol.Optional(CONF_MOVIES_PATHS, default=""): str,
                 vol.Optional(CONF_SERIES_PATHS, default=""): str,
                 vol.Optional(CONF_ANIME_PATHS, default=""): str,
@@ -120,6 +129,18 @@ class MediaGapOptionsFlow(config_entries.OptionsFlow):
                     CONF_SCAN_INTERVAL,
                     default=current.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
                 ): vol.All(vol.Coerce(int), vol.Range(min=1, max=720)),
+                vol.Optional(
+                    CONF_NAS_SERVER,
+                    default=current.get(CONF_NAS_SERVER, ""),
+                ): str,
+                vol.Optional(
+                    CONF_NAS_USERNAME,
+                    default=current.get(CONF_NAS_USERNAME, ""),
+                ): str,
+                vol.Optional(
+                    CONF_NAS_PASSWORD,
+                    default=current.get(CONF_NAS_PASSWORD, ""),
+                ): str,
                 vol.Optional(
                     CONF_MOVIES_PATHS,
                     default=current.get(CONF_MOVIES_PATHS, ""),

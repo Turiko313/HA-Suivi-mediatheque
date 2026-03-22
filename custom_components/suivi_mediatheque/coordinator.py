@@ -1,4 +1,4 @@
-"""DataUpdateCoordinator for Media Gap Analyzer."""
+"""DataUpdateCoordinator for Suivi Médiathèque."""
 from __future__ import annotations
 
 import logging
@@ -15,6 +15,9 @@ from .const import (
     CONF_ANIME_PATHS,
     CONF_LANGUAGE,
     CONF_MOVIES_PATHS,
+    CONF_NAS_PASSWORD,
+    CONF_NAS_SERVER,
+    CONF_NAS_USERNAME,
     CONF_SCAN_INTERVAL,
     CONF_SERIES_PATHS,
     CONF_TMDB_API_KEY,
@@ -53,6 +56,16 @@ class MediaGapCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         series_paths = self._get_option(CONF_SERIES_PATHS)
         anime_paths = self._get_option(CONF_ANIME_PATHS)
 
+        # Build NAS config (None if no server configured)
+        nas_server = self._get_option(CONF_NAS_SERVER)
+        nas_config: dict[str, str] | None = None
+        if nas_server:
+            nas_config = {
+                "server": nas_server,
+                "username": self._get_option(CONF_NAS_USERNAME),
+                "password": self._get_option(CONF_NAS_PASSWORD),
+            }
+
         data: dict[str, Any] = {
             "missing_movies": [],
             "missing_series": [],
@@ -66,7 +79,9 @@ class MediaGapCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         try:
             # ---- Movies ----
             if movies_paths:
-                scanned = await self.hass.async_add_executor_job(scan_movies, movies_paths)
+                scanned = await self.hass.async_add_executor_job(
+                    scan_movies, movies_paths, nas_config
+                )
                 analyzer = MediaAnalyzer(client)
                 result: AnalysisResult = await analyzer.analyze_movies(scanned)
                 data["missing_movies"] = [m.as_dict() for m in result.missing_movies]
@@ -77,7 +92,9 @@ class MediaGapCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             # ---- Series ----
             if series_paths:
-                scanned_s = await self.hass.async_add_executor_job(scan_series, series_paths)
+                scanned_s = await self.hass.async_add_executor_job(
+                    scan_series, series_paths, nas_config
+                )
                 analyzer = MediaAnalyzer(client)
                 result_s = await analyzer.analyze_series(scanned_s)
                 data["missing_series"] = [e.as_dict() for e in result_s.missing_episodes]
@@ -88,7 +105,9 @@ class MediaGapCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             # ---- Anime ----
             if anime_paths:
-                scanned_a = await self.hass.async_add_executor_job(scan_series, anime_paths)
+                scanned_a = await self.hass.async_add_executor_job(
+                    scan_series, anime_paths, nas_config
+                )
                 analyzer = MediaAnalyzer(client)
                 result_a = await analyzer.analyze_series(scanned_a)
                 data["missing_anime"] = [e.as_dict() for e in result_a.missing_episodes]

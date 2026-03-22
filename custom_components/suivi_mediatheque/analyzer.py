@@ -1,4 +1,4 @@
-"""Gap analysis engine for Media Gap Analyzer.
+"""Gap analysis engine for Suivi Médiathèque.
 
 Compares scanned media against TMDb collection / series data to find
 missing movies and episodes.

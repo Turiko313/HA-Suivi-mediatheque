@@ -1,4 +1,4 @@
-"""Sensor platform for Media Gap Analyzer."""
+"""Sensor platform for Suivi Médiathèque."""
 from __future__ import annotations
 
 from typing import Any

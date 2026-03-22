@@ -17,7 +17,7 @@
 | 📺 | **Séries TV** — Repère les épisodes et saisons manquants |
 | 🎌 | **Anime** — Idem, avec un chemin et un sensor dédiés |
 | 🔄 | **Scan planifié** — Analyse automatique configurable (toutes les heures, jours, semaines…) |
-| ▶️ | **Scan manuel** — Service `media_gap_analyzer.scan_now` pour lancer un scan immédiat |
+| ▶️ | **Scan manuel** — Service `suivi_mediatheque.scan_now` pour lancer un scan immédiat |
 | 📊 | **Sensors HA** — Nombre d'éléments manquants + détails complets dans les attributs |
 | 💾 | **Multi-chemins** — Scannez plusieurs disques ou partages NAS |
 | 🖥️ | **Config UI** — Configuration 100% via l'interface Home Assistant |
@@ -29,7 +29,7 @@
 
 1. **Home Assistant** 2024.1.0 ou supérieur
 2. **Clé API TMDb** (gratuite) — Créez un compte sur [themoviedb.org](https://www.themoviedb.org/) puis rendez-vous dans *Paramètres → API* pour obtenir votre clé v3
-3. **Médiathèque accessible** — Vos NAS / disques réseau doivent être montés comme dossiers locaux dans HA (via `/etc/fstab`, add-on Samba, montage `/media/`, etc.)
+3. **Médiathèque accessible** — Vos fichiers doivent être accessibles depuis HA, soit via un NAS (l'intégration se connecte directement en SMB/CIFS), soit via des dossiers montés localement (`/media/`, etc.)
 
 ---
 
@@ -47,8 +47,8 @@
 
 ### Installation manuelle
 
-1. Téléchargez le contenu du dossier `custom_components/media_gap_analyzer/`
-2. Copiez-le dans `<config HA>/custom_components/media_gap_analyzer/`
+1. Téléchargez le contenu du dossier `custom_components/suivi_mediatheque/`
+2. Copiez-le dans `<config HA>/custom_components/suivi_mediatheque/`
 3. Redémarrez Home Assistant
 
 ---
@@ -64,11 +64,16 @@
 | **Clé API TMDb** | Votre clé API v3 | `a1b2c3d4e5f6...` |
 | **Langue** | Langue des résultats TMDb | `fr` |
 | **Intervalle de scan** | En heures (1 à 720) | `24` (1 fois/jour) ou `168` (1 fois/semaine) |
-| **Chemins des films** | Dossier(s) contenant vos films | `/media/films` |
-| **Chemins des séries** | Dossier(s) contenant vos séries | `/media/series` |
-| **Chemins des animés** | Dossier(s) contenant vos animes | `/media/anime` |
+| **Adresse du NAS** *(optionnel)* | IP ou nom d'hôte de votre NAS | `192.168.1.100` |
+| **Utilisateur NAS** *(optionnel)* | Identifiant SMB/CIFS | `monuser` |
+| **Mot de passe NAS** *(optionnel)* | Mot de passe SMB/CIFS | `monpass` |
+| **Chemins des films** | Partage NAS ou chemin local | `Films` ou `/media/films` |
+| **Chemins des séries** | Partage NAS ou chemin local | `Series` ou `/media/series` |
+| **Chemins des animés** | Partage NAS ou chemin local | `Anime` ou `/media/anime` |
 
-> 💡 **Plusieurs chemins ?** Séparez-les par des virgules : `/media/films,/mnt/nas2/films`
+> 💡 **NAS configuré ?** Entrez juste le nom du partage (ex : `Films`). L'intégration se connecte directement en SMB.  
+> 💡 **Pas de NAS ?** Entrez le chemin local complet (ex : `/media/films`).  
+> 💡 **Plusieurs chemins ?** Séparez-les par des virgules : `Films,Films2` ou `/media/films,/mnt/nas2/films`
 
 ### Modifier plus tard
 
@@ -162,12 +167,12 @@ series_analyzed: 10
 
 ## 🔧 Service
 
-### `media_gap_analyzer.scan_now`
+### `suivi_mediatheque.scan_now`
 
 Lance un scan immédiat de toute la médiathèque.
 
 **Depuis le panneau développeur :**
-- **Services** → `media_gap_analyzer.scan_now` → **Appeler le service**
+- **Services** → `suivi_mediatheque.scan_now` → **Appeler le service**
 
 **Dans une automation :**
 
@@ -183,7 +188,7 @@ automation:
         weekday:
           - mon
     action:
-      - service: media_gap_analyzer.scan_now
+      - service: suivi_mediatheque.scan_now
 ```
 
 **Notification quand il manque des films :**
@@ -241,11 +246,48 @@ A : Ça dépend de la taille de votre médiathèque. Le scan de fichiers est rap
 A : Non, la clé API est gratuite pour un usage personnel.
 
 **Q : Mes films sont sur un NAS, comment faire ?**  
-A : Montez votre partage réseau dans HA. Par exemple via `/etc/fstab` :
+A : **Trois options, de la plus simple à la plus avancée :**
+
+#### Option 1 — Connexion directe via l'intégration (recommandé) ✅
+
+L'intégration se connecte directement à votre NAS en SMB/CIFS, **sans aucun montage à faire**.
+
+Dans la configuration de Suivi Médiathèque :
+- **Adresse du NAS** : `192.168.1.100` (l'IP de votre NAS)
+- **Utilisateur NAS** : votre identifiant SMB (celui de votre Synology, QNAP, etc.)
+- **Mot de passe NAS** : votre mot de passe SMB
+- **Chemins** : le nom du partage, ex : `Films`, `Series`, `Anime`
+
 ```
-//192.168.1.100/films /media/films cifs username=xxx,password=xxx 0 0
+Exemple avec un Synology qui partage les dossiers "Films", "Series" et "Anime" :
+  → Adresse NAS : 192.168.1.50
+  → Utilisateur : mediacenter
+  → Mot de passe : monmotdepasse
+  → Chemins films : Films
+  → Chemins séries : Series
+  → Chemins anime : Anime
 ```
-Ou utilisez le add-on **Samba share** de HA.
+
+> ⚠️ **L'add-on "Samba Share" de HA** sert à partager les fichiers de HA *vers* votre réseau (pour éditer `configuration.yaml` depuis votre PC). Ce n'est **pas** ce qu'il faut pour accéder à votre NAS.
+
+#### Option 2 — Stockage réseau HA (HAOS uniquement)
+
+Si vous utilisez Home Assistant OS :
+1. **Paramètres** → **Système** → **Stockage** → **Ajouter un stockage réseau**
+2. Renseignez IP, partage, identifiants, et choisissez le type **Média**
+3. Le partage sera monté dans `/media/`
+4. Dans Suivi Médiathèque, utilisez le chemin local : `/media/MonPartage`
+
+#### Option 3 — Montage manuel (`/etc/fstab`)
+
+Pour les installations Docker ou Supervised :
+```bash
+# Exemple pour monter un partage CIFS dans /media/films
+sudo mkdir -p /media/films
+echo '//192.168.1.100/Films /media/films cifs username=user,password=pass,uid=1000 0 0' | sudo tee -a /etc/fstab
+sudo mount -a
+```
+Puis dans Suivi Médiathèque, utilisez le chemin local : `/media/films`
 
 **Q : Le scan ne trouve pas mes films/séries ?**  
 A : Vérifiez que :
