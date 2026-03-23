@@ -11,6 +11,7 @@ from difflib import SequenceMatcher
 
 from .scanner import ScannedMovie, ScannedSeries
 from .tmdb_client import TMDbClient
+from .wikidata_client import WikidataClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -91,15 +92,21 @@ def _best_match(name: str, year: int | None, results: list[dict], date_key: str 
 # ---------------------------------------------------------------------------
 
 class MediaAnalyzer:
-    """Finds gaps in media collections / series using TMDb data."""
+    """Finds gaps in media collections / series using TMDb or Wikidata."""
 
-    def __init__(self, client: TMDbClient | None = None) -> None:
+    def __init__(self, client: TMDbClient | None = None, wikidata: WikidataClient | None = None) -> None:
         self._client = client
+        self._wikidata = wikidata
 
     async def analyze_movies(self, movies: list[ScannedMovie]) -> AnalysisResult:
+        if self._client:
+            return await self._analyze_movies_tmdb(movies)
+        if self._wikidata:
+            return await self._analyze_movies_wikidata(movies)
+        return AnalysisResult(total_scanned=len(movies))
+
+    async def _analyze_movies_tmdb(self, movies: list[ScannedMovie]) -> AnalysisResult:
         result = AnalysisResult(total_scanned=len(movies))
-        if not self._client:
-            return result  # Cannot detect missing movies without TMDb
         # collection_id -> set of owned tmdb movie ids
         collections_owned: dict[int, set[int]] = {}
         # collection_id -> collection data
@@ -141,6 +148,55 @@ class MediaAnalyzer:
                             year=int(year_str) if year_str else None,
                             tmdb_id=part["id"],
                             poster_path=part.get("poster_path"),
+                        )
+                    )
+
+        result.missing_movies.sort(key=lambda m: (m.collection_name, m.year or 0))
+        return result
+
+    async def _analyze_movies_wikidata(self, movies: list[ScannedMovie]) -> AnalysisResult:
+        """Detect missing movies in collections via Wikidata (no API key needed)."""
+        result = AnalysisResult(total_scanned=len(movies))
+        # series_qid -> set of owned movie qids
+        collections_owned: dict[str, set[str]] = {}
+        # series_qid -> {label, movies[]}
+        collections_data: dict[str, dict] = {}
+
+        for movie in movies:
+            try:
+                match = await self._wikidata.search_movie(movie.title, movie.year)
+                if not match:
+                    _LOGGER.debug("No Wikidata match for movie: %s (%s)", movie.title, movie.year)
+                    continue
+
+                series_qid = match.get("series_qid")
+                if not series_qid:
+                    continue  # standalone movie, no collection
+
+                if series_qid not in collections_data:
+                    coll_movies = await self._wikidata.get_collection_movies(series_qid)
+                    collections_data[series_qid] = {
+                        "label": match.get("series_label") or "Unknown",
+                        "movies": coll_movies,
+                    }
+                    collections_owned[series_qid] = set()
+
+                collections_owned[series_qid].add(match["qid"])
+            except Exception:
+                _LOGGER.exception("Error analyzing movie (Wikidata): %s", movie.title)
+
+        # Find gaps
+        result.collections_found = len(collections_data)
+        for series_qid, coll_data in collections_data.items():
+            owned_qids = collections_owned[series_qid]
+            for m in coll_data["movies"]:
+                if m["qid"] not in owned_qids:
+                    result.missing_movies.append(
+                        MissingMovie(
+                            collection_name=coll_data["label"],
+                            title=m["label"],
+                            year=m.get("year"),
+                            tmdb_id=0,
                         )
                     )
 

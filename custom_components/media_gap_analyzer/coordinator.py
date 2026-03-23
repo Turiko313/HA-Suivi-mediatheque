@@ -27,6 +27,7 @@ from .const import (
 )
 from .scanner import scan_movies, scan_series
 from .tmdb_client import TMDbClient
+from .wikidata_client import WikidataClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -61,8 +62,11 @@ class MediaGapCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         language = self.entry.data.get(CONF_LANGUAGE, "fr")
 
         client: TMDbClient | None = None
+        wikidata: WikidataClient | None = None
         if api_key:
             client = TMDbClient(self.hass, api_key, language)
+        else:
+            wikidata = WikidataClient(self.hass, language)
 
         movies_paths = self._get_paths(CONF_MOVIES_PATHS)
         series_paths = self._get_paths(CONF_SERIES_PATHS)
@@ -98,18 +102,17 @@ class MediaGapCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     scan_movies, movies_paths, nas_config
                 )
                 data["stats_movies"] = {"scanned": len(scanned)}
-                if client:
-                    analyzer = MediaAnalyzer(client)
-                    result: AnalysisResult = await analyzer.analyze_movies(scanned)
-                    data["missing_movies"] = [m.as_dict() for m in result.missing_movies]
-                    data["stats_movies"]["collections_found"] = result.collections_found
+                analyzer = MediaAnalyzer(client, wikidata)
+                result: AnalysisResult = await analyzer.analyze_movies(scanned)
+                data["missing_movies"] = [m.as_dict() for m in result.missing_movies]
+                data["stats_movies"]["collections_found"] = result.collections_found
 
             # ---- Series ----
             if series_paths:
                 scanned_s = await self.hass.async_add_executor_job(
                     scan_series, series_paths, nas_config
                 )
-                analyzer = MediaAnalyzer(client)
+                analyzer = MediaAnalyzer(client, wikidata)
                 result_s = await analyzer.analyze_series(scanned_s)
                 data["missing_series"] = [e.as_dict() for e in result_s.missing_episodes]
                 data["stats_series"] = {
@@ -123,7 +126,7 @@ class MediaGapCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 scanned_a = await self.hass.async_add_executor_job(
                     scan_series, anime_paths, nas_config
                 )
-                analyzer = MediaAnalyzer(client)
+                analyzer = MediaAnalyzer(client, wikidata)
                 result_a = await analyzer.analyze_series(scanned_a)
                 data["missing_anime"] = [e.as_dict() for e in result_a.missing_episodes]
                 data["stats_anime"] = {
@@ -137,7 +140,7 @@ class MediaGapCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 scanned_c = await self.hass.async_add_executor_job(
                     scan_series, cartoons_paths, nas_config
                 )
-                analyzer = MediaAnalyzer(client)
+                analyzer = MediaAnalyzer(client, wikidata)
                 result_c = await analyzer.analyze_series(scanned_c)
                 data["missing_cartoons"] = [e.as_dict() for e in result_c.missing_episodes]
                 data["stats_cartoons"] = {
@@ -152,6 +155,8 @@ class MediaGapCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         finally:
             if client:
                 client.clear_cache()
+            if wikidata:
+                wikidata.clear_cache()
 
         _LOGGER.info(
             "Scan complete: %d missing movies, %d missing series eps, "

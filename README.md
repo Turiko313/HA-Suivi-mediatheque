@@ -13,11 +13,11 @@
 
 | | Fonctionnalité |
 |---|---|
-| 🎥 | **Films** — Détecte les volets manquants dans les sagas et trilogies (nécessite TMDb) |
+| 🎥 | **Films** — Détecte les volets manquants dans les sagas et trilogies (TMDb ou Wikidata) |
 | 📺 | **Séries TV** — Repère les épisodes et saisons manquants |
 | 🎌 | **Anime** — Idem, avec un chemin et un sensor dédiés |
 | 🧸 | **Dessins animés** — Catégorie séparée pour les dessins animés |
-| 🔑 | **TMDb optionnel** — Fonctionne aussi sans clé API (détection locale des trous dans la numérotation) |
+| 🔑 | **TMDb optionnel** — Fonctionne aussi sans clé API (Wikidata pour les films, détection locale pour les épisodes) |
 | 📂 | **Détection auto des chemins** — Menu déroulant qui liste les stockages configurés dans HA + saisie manuelle |
 | 🔄 | **Scan planifié** — Analyse automatique configurable (toutes les heures, jours, semaines…) |
 | ▶️ | **Scan manuel** — Service `media_gap_analyzer.scan_now` pour lancer un scan immédiat |
@@ -31,7 +31,7 @@
 ## 📋 Pré-requis
 
 1. **Home Assistant** 2024.1.0 ou supérieur
-2. **Clé API TMDb** *(optionnelle)* — Créez un compte sur [themoviedb.org](https://www.themoviedb.org/) puis rendez-vous dans *Paramètres → API* pour obtenir votre clé v3. Sans cette clé, l'intégration détecte les trous dans la numérotation des épisodes mais ne peut pas identifier les films manquants dans les collections.
+2. **Clé API TMDb** *(optionnelle)* — Créez un compte sur [themoviedb.org](https://www.themoviedb.org/) puis rendez-vous dans *Paramètres → API* pour obtenir votre clé v3. Sans cette clé, l'intégration utilise **Wikidata** (gratuit, sans inscription) pour détecter les films manquants dans les collections, et la détection locale des trous dans la numérotation pour les épisodes.
 3. **Médiathèque accessible** — Vos fichiers doivent être accessibles depuis HA, soit via un NAS (l'intégration se connecte directement en SMB/CIFS), soit via des dossiers montés localement (`/media/`, etc.)
 
 ---
@@ -82,10 +82,12 @@
 
 ### Mode avec TMDb vs mode local
 
-| | Avec TMDb | Sans TMDb |
+| | Avec TMDb | Sans TMDb (Wikidata) |
 |---|---|---|
-| **Films** | ✅ Détecte les films manquants dans les collections/sagas | ❌ Pas de détection (impossible sans données de collection) |
+| **Films** | ✅ Détecte les films manquants dans les collections/sagas via TMDb | ✅ Détecte les films manquants via Wikidata (gratuit, sans clé API) |
 | **Séries / Anime / Dessins animés** | ✅ Compare avec la liste complète des épisodes TMDb | ✅ Détecte les trous dans la numérotation (ex : a E01 et E03 → manque E02) |
+
+> 💡 **Wikidata** est une base de données libre et gratuite maintenue par la communauté Wikimedia. L'intégration l'utilise automatiquement quand aucune clé TMDb n'est configurée pour identifier les sagas/trilogies et leurs volets manquants.
 
 ### Modifier plus tard
 
@@ -245,14 +247,17 @@ automation:
                                              └──────────────┘
 ```
 
-### Sans clé TMDb (mode local)
+### Sans clé TMDb (mode Wikidata + local)
 
 ```
 ┌─────────────────┐     ┌──────────────┐     ┌──────────────────┐
-│  Vos dossiers   │────▶│   Scanner    │────▶│  Détection locale│
-│  séries/anime   │     │  (parsing    │     │  (trous dans la  │
-│  /dessins anim. │     │   S01E01)    │     │   numérotation)  │
-└─────────────────┘     └──────────────┘     └────────┬─────────┘
+│  Vos dossiers   │────▶│   Scanner    │────▶│  Films :         │
+│  films/séries   │     │  (parsing    │     │  Wikidata (P179) │
+│  /anime/dessins │     │   noms)      │     │                  │
+└─────────────────┘     └──────────────┘     │  Séries/Anime :  │
+                                              │  Détection locale│
+                                              │  (trous numérot.)│
+                                              └────────┬─────────┘
                                                        │
                                                        ▼
                                               ┌──────────────┐
@@ -263,8 +268,9 @@ automation:
 
 1. **Scanner** — Parcourt vos dossiers et extrait le nom/année des films et le pattern S01E01 des épisodes
 2. **Analyse TMDb** *(si clé configurée)* — Recherche chaque film/série sur TMDb pour identifier les collections et la liste complète des épisodes
-3. **Analyse locale** *(si pas de clé TMDb)* — Détecte les trous dans la numérotation des épisodes (a E01 et E03 → manque E02)
-4. **Sensors** — Expose les résultats dans Home Assistant
+3. **Analyse Wikidata** *(si pas de clé TMDb, pour les films)* — Recherche chaque film sur Wikidata, identifie la saga via la propriété P179 (« fait partie de la série »), puis récupère tous les volets via SPARQL
+4. **Analyse locale** *(si pas de clé TMDb, pour les séries)* — Détecte les trous dans la numérotation des épisodes (a E01 et E03 → manque E02)
+5. **Sensors** — Expose les résultats dans Home Assistant
 
 ---
 
@@ -331,7 +337,13 @@ A : Vérifiez que :
 - Les épisodes contiennent le pattern `S01E01` dans le nom du fichier
 
 **Q : Il détecte des films "manquants" que je ne veux pas ?**  
-A : C'est normal — TMDb liste tous les films d'une collection, y compris les spin-offs. Une future version permettra d'ignorer certains titres.
+A : C'est normal — TMDb/Wikidata listent tous les films d'une collection, y compris les spin-offs. Une future version permettra d'ignorer certains titres.
+
+**Q : Qu'est-ce que Wikidata ?**  
+A : [Wikidata](https://www.wikidata.org/) est une base de données libre et gratuite maintenue par la communauté Wikimedia (les mêmes qui font Wikipédia). L'intégration l'utilise comme alternative gratuite à TMDb pour identifier les sagas de films et leurs volets manquants. Aucune inscription ni clé API n'est nécessaire.
+
+**Q : TMDb ou Wikidata, lequel est le mieux ?**  
+A : TMDb est plus complet et plus rapide pour les films (toutes les collections sont bien référencées). Wikidata est gratuit et sans inscription, mais la couverture des franchises peut être moins exhaustive. Si vous avez une grande médiathèque, nous recommandons de créer une clé TMDb gratuite.
 
 ---
 
