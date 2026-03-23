@@ -93,11 +93,13 @@ def _best_match(name: str, year: int | None, results: list[dict], date_key: str 
 class MediaAnalyzer:
     """Finds gaps in media collections / series using TMDb data."""
 
-    def __init__(self, client: TMDbClient) -> None:
+    def __init__(self, client: TMDbClient | None = None) -> None:
         self._client = client
 
     async def analyze_movies(self, movies: list[ScannedMovie]) -> AnalysisResult:
         result = AnalysisResult(total_scanned=len(movies))
+        if not self._client:
+            return result  # Cannot detect missing movies without TMDb
         # collection_id -> set of owned tmdb movie ids
         collections_owned: dict[int, set[int]] = {}
         # collection_id -> collection data
@@ -146,6 +148,9 @@ class MediaAnalyzer:
         return result
 
     async def analyze_series(self, series_list: list[ScannedSeries]) -> AnalysisResult:
+        if not self._client:
+            return self._analyze_series_local(series_list)
+
         result = AnalysisResult(total_scanned=len(series_list))
 
         for series in series_list:
@@ -190,5 +195,28 @@ class MediaAnalyzer:
             except Exception:
                 _LOGGER.exception("Error analyzing series: %s", series.title)
 
+        result.missing_episodes.sort(key=lambda e: (e.series_name, e.season, e.episode))
+        return result
+
+    def _analyze_series_local(self, series_list: list[ScannedSeries]) -> AnalysisResult:
+        """Detect missing episodes by finding gaps in numbering (no TMDb needed)."""
+        result = AnalysisResult(total_scanned=len(series_list))
+        for series in series_list:
+            result.series_analyzed += 1
+            seasons: dict[int, set[int]] = {}
+            for ep in series.episodes:
+                seasons.setdefault(ep.season, set()).add(ep.episode)
+            for season_num, episodes in sorted(seasons.items()):
+                if not episodes:
+                    continue
+                for ep_num in range(min(episodes), max(episodes) + 1):
+                    if ep_num not in episodes:
+                        result.missing_episodes.append(
+                            MissingEpisode(
+                                series_name=series.title,
+                                season=season_num,
+                                episode=ep_num,
+                            )
+                        )
         result.missing_episodes.sort(key=lambda e: (e.series_name, e.season, e.episode))
         return result

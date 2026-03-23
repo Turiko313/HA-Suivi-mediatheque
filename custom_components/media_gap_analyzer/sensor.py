@@ -26,6 +26,7 @@ async def async_setup_entry(
             MissingMoviesSensor(coordinator, entry),
             MissingSeriesSensor(coordinator, entry),
             MissingAnimeSensor(coordinator, entry),
+            MissingCartoonsSensor(coordinator, entry),
             LastScanSensor(coordinator, entry),
         ]
     )
@@ -135,6 +136,34 @@ class MissingAnimeSensor(_BaseSensor):
         }
 
 
+class MissingCartoonsSensor(_BaseSensor):
+    def __init__(self, coordinator: MediaGapCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "missing_cartoons", "Episodes manquants (Dessins anim\u00e9s)", "mdi:teddy-bear")
+
+    @property
+    def native_value(self) -> int:
+        if self.coordinator.data:
+            return len(self.coordinator.data.get("missing_cartoons", []))
+        return 0
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        if not self.coordinator.data:
+            return {}
+        items = self.coordinator.data.get("missing_cartoons", [])
+        stats = self.coordinator.data.get("stats_cartoons", {})
+        grouped: dict[str, dict[str, list[int]]] = {}
+        for ep in items[:MAX_ATTR_ITEMS]:
+            show = ep.get("series", "?")
+            season_key = f"S{ep.get('season', 0):02d}"
+            grouped.setdefault(show, {}).setdefault(season_key, []).append(ep.get("episode", 0))
+        return {
+            "missing_by_series": grouped,
+            "total_missing": len(items),
+            **stats,
+        }
+
+
 class LastScanSensor(_BaseSensor):
     def __init__(self, coordinator: MediaGapCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator, entry, "last_scan", "Dernier scan mediatheque", "mdi:clock-check-outline")
@@ -154,4 +183,5 @@ class LastScanSensor(_BaseSensor):
             "movies": self.coordinator.data.get("stats_movies", {}),
             "series": self.coordinator.data.get("stats_series", {}),
             "anime": self.coordinator.data.get("stats_anime", {}),
+            "cartoons": self.coordinator.data.get("stats_cartoons", {}),
         }

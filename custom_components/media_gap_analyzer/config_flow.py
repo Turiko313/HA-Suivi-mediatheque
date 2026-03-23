@@ -10,9 +10,11 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig
 
 from .const import (
     CONF_ANIME_PATHS,
+    CONF_CARTOONS_PATHS,
     CONF_LANGUAGE,
     CONF_MOVIES_PATHS,
     CONF_NAS_PASSWORD,
@@ -41,14 +43,40 @@ LANGUAGES = {
 }
 
 
-def _validate_paths(raw: str) -> str | None:
-    if not raw:
-        return None
-    for p in raw.split(","):
-        p = p.strip()
-        if p and not os.path.isdir(p):
-            return p
-    return None
+def _detect_media_dirs() -> list[str]:
+    """Scan /media and /share for directories (2 levels deep)."""
+    dirs: list[str] = []
+    for root in ("/media", "/share"):
+        if not os.path.isdir(root):
+            continue
+        try:
+            for entry in sorted(os.listdir(root)):
+                full = os.path.join(root, entry)
+                if not os.path.isdir(full):
+                    continue
+                dirs.append(full)
+                try:
+                    for sub in sorted(os.listdir(full)):
+                        sub_full = os.path.join(full, sub)
+                        if os.path.isdir(sub_full):
+                            dirs.append(sub_full)
+                except PermissionError:
+                    pass
+        except PermissionError:
+            pass
+    return dirs
+
+
+def _path_selector(detected: list[str]) -> SelectSelector:
+    """Build a path selector with detected directories + custom value support."""
+    return SelectSelector(
+        SelectSelectorConfig(
+            options=[{"value": d, "label": d} for d in detected],
+            multiple=True,
+            custom_value=True,
+            mode="dropdown",
+        )
+    )
 
 
 class MediaGapConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -60,16 +88,22 @@ class MediaGapConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            # Validate TMDb key
-            client = TMDbClient(self.hass, user_input[CONF_TMDB_API_KEY], user_input.get(CONF_LANGUAGE, DEFAULT_LANGUAGE))
-            if not await client.validate_api_key():
-                errors["base"] = "invalid_api_key"
-            else:
-                # Store API key + language in data, paths + NAS + interval in options
+            api_key = user_input.get(CONF_TMDB_API_KEY, "").strip()
+            # Validate TMDb key only if provided
+            if api_key:
+                client = TMDbClient(
+                    self.hass,
+                    api_key,
+                    user_input.get(CONF_LANGUAGE, DEFAULT_LANGUAGE),
+                )
+                if not await client.validate_api_key():
+                    errors["base"] = "invalid_api_key"
+
+            if not errors:
                 return self.async_create_entry(
                     title="Suivi Médiathèque",
                     data={
-                        CONF_TMDB_API_KEY: user_input[CONF_TMDB_API_KEY],
+                        CONF_TMDB_API_KEY: api_key,
                         CONF_LANGUAGE: user_input.get(CONF_LANGUAGE, DEFAULT_LANGUAGE),
                     },
                     options={
@@ -77,15 +111,19 @@ class MediaGapConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_NAS_SERVER: user_input.get(CONF_NAS_SERVER, ""),
                         CONF_NAS_USERNAME: user_input.get(CONF_NAS_USERNAME, ""),
                         CONF_NAS_PASSWORD: user_input.get(CONF_NAS_PASSWORD, ""),
-                        CONF_MOVIES_PATHS: user_input.get(CONF_MOVIES_PATHS, ""),
-                        CONF_SERIES_PATHS: user_input.get(CONF_SERIES_PATHS, ""),
-                        CONF_ANIME_PATHS: user_input.get(CONF_ANIME_PATHS, ""),
+                        CONF_MOVIES_PATHS: user_input.get(CONF_MOVIES_PATHS, []),
+                        CONF_SERIES_PATHS: user_input.get(CONF_SERIES_PATHS, []),
+                        CONF_ANIME_PATHS: user_input.get(CONF_ANIME_PATHS, []),
+                        CONF_CARTOONS_PATHS: user_input.get(CONF_CARTOONS_PATHS, []),
                     },
                 )
 
+        detected = await self.hass.async_add_executor_job(_detect_media_dirs)
+        selector = _path_selector(detected)
+
         schema = vol.Schema(
             {
-                vol.Required(CONF_TMDB_API_KEY): str,
+                vol.Optional(CONF_TMDB_API_KEY, default=""): str,
                 vol.Optional(CONF_LANGUAGE, default=DEFAULT_LANGUAGE): vol.In(LANGUAGES),
                 vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): vol.All(
                     vol.Coerce(int), vol.Range(min=1, max=720)
@@ -93,9 +131,10 @@ class MediaGapConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(CONF_NAS_SERVER, default=""): str,
                 vol.Optional(CONF_NAS_USERNAME, default=""): str,
                 vol.Optional(CONF_NAS_PASSWORD, default=""): str,
-                vol.Optional(CONF_MOVIES_PATHS, default=""): str,
-                vol.Optional(CONF_SERIES_PATHS, default=""): str,
-                vol.Optional(CONF_ANIME_PATHS, default=""): str,
+                vol.Optional(CONF_MOVIES_PATHS, default=[]): selector,
+                vol.Optional(CONF_SERIES_PATHS, default=[]): selector,
+                vol.Optional(CONF_ANIME_PATHS, default=[]): selector,
+                vol.Optional(CONF_CARTOONS_PATHS, default=[]): selector,
             }
         )
 
@@ -123,6 +162,16 @@ class MediaGapOptionsFlow(config_entries.OptionsFlow):
 
         current = self._config_entry.options
 
+        detected = await self.hass.async_add_executor_job(_detect_media_dirs)
+        selector = _path_selector(detected)
+
+        def _as_list(key: str) -> list[str]:
+            """Get current paths as list (handles old CSV string format)."""
+            val = current.get(key, [])
+            if isinstance(val, str):
+                return [p.strip() for p in val.split(",") if p.strip()]
+            return val
+
         schema = vol.Schema(
             {
                 vol.Optional(
@@ -143,16 +192,20 @@ class MediaGapOptionsFlow(config_entries.OptionsFlow):
                 ): str,
                 vol.Optional(
                     CONF_MOVIES_PATHS,
-                    default=current.get(CONF_MOVIES_PATHS, ""),
-                ): str,
+                    default=_as_list(CONF_MOVIES_PATHS),
+                ): selector,
                 vol.Optional(
                     CONF_SERIES_PATHS,
-                    default=current.get(CONF_SERIES_PATHS, ""),
-                ): str,
+                    default=_as_list(CONF_SERIES_PATHS),
+                ): selector,
                 vol.Optional(
                     CONF_ANIME_PATHS,
-                    default=current.get(CONF_ANIME_PATHS, ""),
-                ): str,
+                    default=_as_list(CONF_ANIME_PATHS),
+                ): selector,
+                vol.Optional(
+                    CONF_CARTOONS_PATHS,
+                    default=_as_list(CONF_CARTOONS_PATHS),
+                ): selector,
             }
         )
 

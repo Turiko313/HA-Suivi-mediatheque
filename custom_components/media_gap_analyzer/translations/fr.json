@@ -1,0 +1,61 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Suivi Médiathèque",
+        "description": "Configurez les chemins de votre médiathèque. La clé API TMDb est optionnelle mais permet la détection des collections de films et la liste complète des épisodes.\nSi un NAS est configuré, entrez le nom du partage (ex : 'Films'). Sinon, sélectionnez ou tapez les chemins locaux.\nLes montages de stockage détectés apparaissent dans les menus déroulants.",
+        "data": {
+          "tmdb_api_key": "Clé API TMDb (optionnel)",
+          "language": "Langue",
+          "scan_interval": "Intervalle de scan (heures)",
+          "nas_server": "Adresse du NAS (optionnel)",
+          "nas_username": "Utilisateur NAS (optionnel)",
+          "nas_password": "Mot de passe NAS (optionnel)",
+          "movies_paths": "Chemins des films",
+          "series_paths": "Chemins des séries",
+          "anime_paths": "Chemins des animés",
+          "cartoons_paths": "Chemins des dessins animés"
+        },
+        "data_description": {
+          "tmdb_api_key": "Obtenez une clé gratuite sur themoviedb.org. Sans clé, seule la détection locale est disponible pour les séries (trous dans la numérotation des épisodes).",
+          "nas_server": "IP ou nom d'hôte de votre NAS, ex : 192.168.1.100. Laissez vide pour des chemins locaux.",
+          "nas_username": "Identifiant SMB/CIFS de votre partage NAS.",
+          "nas_password": "Mot de passe SMB/CIFS de votre partage NAS.",
+          "movies_paths": "Sélectionnez un chemin détecté ou tapez un chemin personnalisé. Partage NAS (ex : 'Films') ou chemin local.",
+          "series_paths": "Sélectionnez un chemin détecté ou tapez un chemin personnalisé. Partage NAS (ex : 'Series') ou chemin local.",
+          "anime_paths": "Sélectionnez un chemin détecté ou tapez un chemin personnalisé. Partage NAS (ex : 'Anime') ou chemin local.",
+          "cartoons_paths": "Sélectionnez un chemin détecté ou tapez un chemin personnalisé. Partage NAS (ex : 'Dessins animés') ou chemin local."
+        }
+      }
+    },
+    "error": {
+      "invalid_api_key": "Clé API TMDb invalide. Veuillez vérifier et réessayer."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Suivi Médiathèque - Options",
+        "data": {
+          "scan_interval": "Intervalle de scan (heures)",
+          "nas_server": "Adresse du NAS (optionnel)",
+          "nas_username": "Utilisateur NAS (optionnel)",
+          "nas_password": "Mot de passe NAS (optionnel)",
+          "movies_paths": "Chemins des films",
+          "series_paths": "Chemins des séries",
+          "anime_paths": "Chemins des animés",
+          "cartoons_paths": "Chemins des dessins animés"
+        },
+        "data_description": {
+          "nas_server": "IP ou nom d'hôte de votre NAS. Laissez vide pour des chemins locaux.",
+          "nas_username": "Identifiant SMB/CIFS de votre partage NAS.",
+          "nas_password": "Mot de passe SMB/CIFS de votre partage NAS.",
+          "movies_paths": "Sélectionnez un chemin détecté ou tapez un chemin personnalisé.",
+          "series_paths": "Sélectionnez un chemin détecté ou tapez un chemin personnalisé.",
+          "anime_paths": "Sélectionnez un chemin détecté ou tapez un chemin personnalisé.",
+          "cartoons_paths": "Sélectionnez un chemin détecté ou tapez un chemin personnalisé."
+        }
+      }
+    }
+  }
+}

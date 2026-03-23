@@ -1,0 +1,61 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Suivi Médiathèque",
+        "description": "Configure your media library paths. TMDb API key is optional but enables collection detection for movies and full episode listing for series.\nIf NAS is configured, enter share names (e.g. 'Films'). Otherwise, select or type local paths.\nDetected storage mounts are shown in the dropdowns.",
+        "data": {
+          "tmdb_api_key": "TMDb API Key (optional)",
+          "language": "Language",
+          "scan_interval": "Scan interval (hours)",
+          "nas_server": "NAS server address (optional)",
+          "nas_username": "NAS username (optional)",
+          "nas_password": "NAS password (optional)",
+          "movies_paths": "Movies paths",
+          "series_paths": "Series paths",
+          "anime_paths": "Anime paths",
+          "cartoons_paths": "Cartoons paths"
+        },
+        "data_description": {
+          "tmdb_api_key": "Get a free key at themoviedb.org. Without it, only local gap detection is available for series (gaps in episode numbering).",
+          "nas_server": "IP or hostname of your NAS, e.g. 192.168.1.100. Leave empty for local paths.",
+          "nas_username": "SMB/CIFS username for your NAS share.",
+          "nas_password": "SMB/CIFS password for your NAS share.",
+          "movies_paths": "Select detected paths or type custom ones. NAS share name (e.g. 'Films') or local path.",
+          "series_paths": "Select detected paths or type custom ones. NAS share name (e.g. 'Series') or local path.",
+          "anime_paths": "Select detected paths or type custom ones. NAS share name (e.g. 'Anime') or local path.",
+          "cartoons_paths": "Select detected paths or type custom ones. NAS share name (e.g. 'Cartoons') or local path."
+        }
+      }
+    },
+    "error": {
+      "invalid_api_key": "Invalid TMDb API key. Please check and try again."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Suivi Médiathèque - Options",
+        "data": {
+          "scan_interval": "Scan interval (hours)",
+          "nas_server": "NAS server address (optional)",
+          "nas_username": "NAS username (optional)",
+          "nas_password": "NAS password (optional)",
+          "movies_paths": "Movies paths",
+          "series_paths": "Series paths",
+          "anime_paths": "Anime paths",
+          "cartoons_paths": "Cartoons paths"
+        },
+        "data_description": {
+          "nas_server": "IP or hostname of your NAS. Leave empty for local paths.",
+          "nas_username": "SMB/CIFS username for your NAS share.",
+          "nas_password": "SMB/CIFS password for your NAS share.",
+          "movies_paths": "Select detected paths or type custom ones.",
+          "series_paths": "Select detected paths or type custom ones.",
+          "anime_paths": "Select detected paths or type custom ones.",
+          "cartoons_paths": "Select detected paths or type custom ones."
+        }
+      }
+    }
+  }
+}

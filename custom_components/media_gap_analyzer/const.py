@@ -1,6 +1,6 @@
 """Constants for Suivi Médiathèque."""
 
-DOMAIN = "suivi_mediatheque"
+DOMAIN = "media_gap_analyzer"
 PLATFORMS = ["sensor"]
 
 # -- Config keys
@@ -10,6 +10,7 @@ CONF_SCAN_INTERVAL = "scan_interval"
 CONF_MOVIES_PATHS = "movies_paths"
 CONF_SERIES_PATHS = "series_paths"
 CONF_ANIME_PATHS = "anime_paths"
+CONF_CARTOONS_PATHS = "cartoons_paths"
 
 # -- NAS / SMB config keys
 CONF_NAS_SERVER = "nas_server"
@@ -20,6 +21,7 @@ CONF_NAS_PASSWORD = "nas_password"
 MEDIA_TYPE_MOVIES = "movies"
 MEDIA_TYPE_SERIES = "series"
 MEDIA_TYPE_ANIME = "anime"
+MEDIA_TYPE_CARTOONS = "cartoons"
 
 # -- Defaults
 DEFAULT_SCAN_INTERVAL = 24  # hours

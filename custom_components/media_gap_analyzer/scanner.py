@@ -193,11 +193,14 @@ def _parse_episode(filename: str, fallback_season: int | None = None) -> tuple[i
 # Public scanner functions (blocking - run via executor)
 # ---------------------------------------------------------------------------
 
-def scan_movies(paths_csv: str, nas_config: dict | None = None) -> list[ScannedMovie]:
+def scan_movies(paths: str | list[str], nas_config: dict | None = None) -> list[ScannedMovie]:
     fs = _FileOps(nas_config)
     movies: list[ScannedMovie] = []
-    paths = [p.strip() for p in paths_csv.split(",") if p.strip()]
-    for raw in paths:
+    if isinstance(paths, str):
+        path_list = [p.strip() for p in paths.split(",") if p.strip()]
+    else:
+        path_list = [p.strip() for p in paths if p.strip()]
+    for raw in path_list:
         base = fs.resolve_path(raw)
         if not fs.isdir(base):
             _LOGGER.warning("Movies path does not exist: %s", base)
@@ -214,15 +217,18 @@ def scan_movies(paths_csv: str, nas_config: dict | None = None) -> list[ScannedM
                 name = os.path.splitext(entry)[0]
                 title, year = _parse_movie_name(name)
                 movies.append(ScannedMovie(title=title, year=year, file_path=full))
-    _LOGGER.info("Scanned %d movies across %d paths", len(movies), len(paths))
+    _LOGGER.info("Scanned %d movies across %d paths", len(movies), len(path_list))
     return movies
 
 
-def scan_series(paths_csv: str, nas_config: dict | None = None) -> list[ScannedSeries]:
+def scan_series(paths: str | list[str], nas_config: dict | None = None) -> list[ScannedSeries]:
     fs = _FileOps(nas_config)
     series_map: dict[str, ScannedSeries] = {}
-    paths = [p.strip() for p in paths_csv.split(",") if p.strip()]
-    for raw in paths:
+    if isinstance(paths, str):
+        path_list = [p.strip() for p in paths.split(",") if p.strip()]
+    else:
+        path_list = [p.strip() for p in paths if p.strip()]
+    for raw in path_list:
         base = fs.resolve_path(raw)
         if not fs.isdir(base):
             _LOGGER.warning("Series path does not exist: %s", base)
@@ -265,5 +271,5 @@ def scan_series(paths_csv: str, nas_config: dict | None = None) -> list[ScannedS
                         _LOGGER.debug("Could not parse episode from: %s", fname)
 
     result = list(series_map.values())
-    _LOGGER.info("Scanned %d series across %d paths", len(result), len(paths))
+    _LOGGER.info("Scanned %d series across %d paths", len(result), len(path_list))
     return result
