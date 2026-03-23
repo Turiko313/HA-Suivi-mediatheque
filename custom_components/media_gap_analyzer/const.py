@@ -1,7 +1,7 @@
 """Constants for Suivi Médiathèque."""
 
 DOMAIN = "media_gap_analyzer"
-PLATFORMS = ["sensor"]
+PLATFORMS = ["sensor", "button"]
 
 # -- Config keys
 CONF_TMDB_API_KEY = "tmdb_api_key"

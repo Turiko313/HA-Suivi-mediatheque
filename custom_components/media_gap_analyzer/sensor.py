@@ -27,6 +27,10 @@ async def async_setup_entry(
             MissingSeriesSensor(coordinator, entry),
             MissingAnimeSensor(coordinator, entry),
             MissingCartoonsSensor(coordinator, entry),
+            TotalMoviesSensor(coordinator, entry),
+            TotalSeriesSensor(coordinator, entry),
+            TotalAnimeSensor(coordinator, entry),
+            TotalCartoonsSensor(coordinator, entry),
             LastScanSensor(coordinator, entry),
         ]
     )
@@ -162,6 +166,72 @@ class MissingCartoonsSensor(_BaseSensor):
             "total_missing": len(items),
             **stats,
         }
+
+
+class _TotalFilesSensor(_BaseSensor):
+    """Base sensor showing total video files count for a media section."""
+
+    def __init__(
+        self,
+        coordinator: MediaGapCoordinator,
+        entry: ConfigEntry,
+        key: str,
+        name: str,
+        icon: str,
+        stats_key: str,
+        value_key: str,
+    ) -> None:
+        super().__init__(coordinator, entry, key, name, icon)
+        self._stats_key = stats_key
+        self._value_key = value_key
+
+    @property
+    def native_value(self) -> int:
+        if not self.coordinator.data:
+            return 0
+        return self.coordinator.data.get(self._stats_key, {}).get(self._value_key, 0)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        if not self.coordinator.data:
+            return {}
+        return dict(self.coordinator.data.get(self._stats_key, {}))
+
+
+class TotalMoviesSensor(_TotalFilesSensor):
+    def __init__(self, coordinator: MediaGapCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(
+            coordinator, entry, "total_movies",
+            "Total fichiers vidéo (Films)", "mdi:movie-check",
+            "stats_movies", "scanned",
+        )
+
+
+class TotalSeriesSensor(_TotalFilesSensor):
+    def __init__(self, coordinator: MediaGapCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(
+            coordinator, entry, "total_series_files",
+            "Total fichiers vidéo (Séries)", "mdi:television",
+            "stats_series", "total_episodes",
+        )
+
+
+class TotalAnimeSensor(_TotalFilesSensor):
+    def __init__(self, coordinator: MediaGapCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(
+            coordinator, entry, "total_anime_files",
+            "Total fichiers vidéo (Animés)", "mdi:cards-playing-spade-outline",
+            "stats_anime", "total_episodes",
+        )
+
+
+class TotalCartoonsSensor(_TotalFilesSensor):
+    def __init__(self, coordinator: MediaGapCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(
+            coordinator, entry, "total_cartoons_files",
+            "Total fichiers vidéo (Dessins animés)", "mdi:teddy-bear",
+            "stats_cartoons", "total_episodes",
+        )
 
 
 class LastScanSensor(_BaseSensor):

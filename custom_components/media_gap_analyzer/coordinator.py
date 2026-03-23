@@ -92,18 +92,17 @@ class MediaGapCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         }
 
         try:
-            # ---- Movies (requires TMDb for collection detection) ----
-            if movies_paths and client:
+            # ---- Movies ----
+            if movies_paths:
                 scanned = await self.hass.async_add_executor_job(
                     scan_movies, movies_paths, nas_config
                 )
-                analyzer = MediaAnalyzer(client)
-                result: AnalysisResult = await analyzer.analyze_movies(scanned)
-                data["missing_movies"] = [m.as_dict() for m in result.missing_movies]
-                data["stats_movies"] = {
-                    "scanned": result.total_scanned,
-                    "collections_found": result.collections_found,
-                }
+                data["stats_movies"] = {"scanned": len(scanned)}
+                if client:
+                    analyzer = MediaAnalyzer(client)
+                    result: AnalysisResult = await analyzer.analyze_movies(scanned)
+                    data["missing_movies"] = [m.as_dict() for m in result.missing_movies]
+                    data["stats_movies"]["collections_found"] = result.collections_found
 
             # ---- Series ----
             if series_paths:
@@ -116,6 +115,7 @@ class MediaGapCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 data["stats_series"] = {
                     "scanned": result_s.total_scanned,
                     "series_analyzed": result_s.series_analyzed,
+                    "total_episodes": sum(len(s.episodes) for s in scanned_s),
                 }
 
             # ---- Anime ----
@@ -129,6 +129,7 @@ class MediaGapCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 data["stats_anime"] = {
                     "scanned": result_a.total_scanned,
                     "series_analyzed": result_a.series_analyzed,
+                    "total_episodes": sum(len(s.episodes) for s in scanned_a),
                 }
 
             # ---- Dessins animés ----
@@ -142,6 +143,7 @@ class MediaGapCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 data["stats_cartoons"] = {
                     "scanned": result_c.total_scanned,
                     "series_analyzed": result_c.series_analyzed,
+                    "total_episodes": sum(len(s.episodes) for s in scanned_c),
                 }
 
         except Exception as exc:
